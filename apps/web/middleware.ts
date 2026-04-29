@@ -18,7 +18,8 @@ export async function middleware(req: NextRequest) {
     ) {
       return NextResponse.redirect(new URL("/", req.url));
     }
-    // Block API routes that need DB so users don't see 500s
+    // Block API routes that need DB so users don't see 500s.
+    // Allow /api/quick-tailor (no DB, no auth — the public input/output endpoint).
     if (
       pathname.startsWith("/api/auth/register") ||
       pathname.startsWith("/api/tailor") ||
