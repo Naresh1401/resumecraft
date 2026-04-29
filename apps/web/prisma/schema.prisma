@@ -1,0 +1,178 @@
+// Prisma schema — Resume Tailoring SaaS
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OutputFormat {
+  DOCX
+  PDF
+}
+
+enum SessionStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum EmailStatus {
+  DRAFT
+  SENT
+  FAILED
+}
+
+model User {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  passwordHash    String
+  role            Role     @default(USER)
+  apiKeyHash      String   @unique
+  apiKeyPrefix    String   // first 8 chars for display
+  apiKeyCreatedAt DateTime @default(now())
+  isActive        Boolean  @default(true)
+  hasSeenTour     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastLogin       DateTime?
+
+  sessions       TailoringSession[]
+  apiLogs        ApiLog[]
+  downloads      DownloadLog[]
+  auditActionsBy AuditLog[]         @relation("AdminActions")
+  auditActionsOn AuditLog[]         @relation("TargetUser")
+
+  @@index([email])
+}
+
+model TailoringSession {
+  id                 String        @id @default(cuid())
+  userId             String
+  user               User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name               String
+  jdTitle            String
+  jdCompany          String?
+  jdText             String        @db.Text
+  originalResumeKey  String        // S3 key
+  originalResumeUrl  String        // S3 URL
+  originalResumeText String        @db.Text
+  styleMetadata      Json?         // font, sizes, margins extracted from original
+  outputFormat       OutputFormat  @default(DOCX)
+  status             SessionStatus @default(PROCESSING)
+  errorMessage       String?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  versions ResumeVersion[]
+  emails   Email[]
+
+  @@index([userId, createdAt])
+}
+
+model ResumeVersion {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       TailoringSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  versionNumber Int
+  tailoredJson  Json
+  fileKey       String?  // S3 key for generated file
+  fileUrl       String?
+  atsScore      Int
+  atsBreakdown  Json
+  changesMade   Json
+  matchedKeywords Json
+  missingKeywords Json
+  isCurrent     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  emails    Email[]
+  downloads DownloadLog[]
+
+  @@unique([sessionId, versionNumber])
+  @@index([sessionId])
+}
+
+model Email {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   TailoringSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  versionId String
+  version   ResumeVersion    @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  toEmail   String?
+  subject   String
+  body      String      @db.Text
+  wordCount Int         @default(0)
+  status    EmailStatus @default(DRAFT)
+  sentAt    DateTime?
+  errorMessage String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([sessionId])
+}
+
+model ApiLog {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint       String
+  method         String
+  ipAddress      String
+  apiKeyUsed     Boolean  @default(false)
+  responseStatus Int
+  durationMs     Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model DownloadLog {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  versionId String
+  version   ResumeVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  format    OutputFormat
+  createdAt DateTime     @default(now())
+
+  @@index([userId])
+  @@index([versionId])
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  adminId      String
+  admin        User     @relation("AdminActions", fields: [adminId], references: [id])
+  targetUserId String?
+  targetUser   User?    @relation("TargetUser", fields: [targetUserId], references: [id])
+  action       String
+  metadata     Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+
+  @@index([adminId, createdAt])
+  @@index([targetUserId])
+}
+
+model SystemSettings {
+  id                   String   @id @default("singleton")
+  aiModel              String   @default("gpt-4o")
+  maxFileSizeMb        Int      @default(5)
+  maxTailorPerHour     Int      @default(10)
+  maxApiCallsPerHour   Int      @default(100)
+  smtpHost             String?
+  smtpPort             Int?
+  smtpUser             String?
+  smtpFrom             String?
+  updatedAt            DateTime @updatedAt
+}

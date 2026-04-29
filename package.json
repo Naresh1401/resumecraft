@@ -1,0 +1,18 @@
+{
+  "name": "resume-tailoring",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter web dev",
+    "build": "pnpm --filter web build",
+    "start": "pnpm --filter web start",
+    "lint": "pnpm --filter web lint",
+    "db:migrate": "pnpm --filter web prisma migrate dev",
+    "db:seed": "pnpm --filter web prisma db seed",
+    "db:reset": "pnpm --filter web prisma migrate reset"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

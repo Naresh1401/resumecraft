@@ -1,0 +1,202 @@
+{
+  "info": {
+    "name": "ResumeTailor API",
+    "_postman_id": "8c0aa1b0-1f3f-4e10-9b9d-1d9b2c3a0001",
+    "description": "Complete API collection for the ResumeTailor SaaS. Use either a NextAuth session cookie or a Bearer API key (rt_xxx).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "apiKey", "value": "rt_replace_me" },
+    { "key": "sessionId", "value": "" },
+    { "key": "versionId", "value": "" },
+    { "key": "emailId", "value": "" },
+    { "key": "userId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{apiKey}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/register",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Jane Doe\",\n  \"email\": \"jane@example.com\",\n  \"password\": \"Pass1234\"\n}" }
+          }
+        },
+        {
+          "name": "Sign in (NextAuth credentials)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "url": "{{baseUrl}}/api/auth/callback/credentials",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "email", "value": "user1@app.com" },
+                { "key": "password", "value": "User@123" },
+                { "key": "redirect", "value": "false" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        { "name": "Get profile", "request": { "method": "GET", "url": "{{baseUrl}}/api/user/profile" } },
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/user/profile",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"New Name\"\n}" }
+          }
+        },
+        { "name": "Get API key (masked)", "request": { "method": "GET", "url": "{{baseUrl}}/api/user/api-key" } },
+        { "name": "Regenerate API key", "request": { "method": "POST", "url": "{{baseUrl}}/api/user/api-key/regenerate" } }
+      ]
+    },
+    {
+      "name": "Tailor",
+      "item": [
+        { "name": "List sessions", "request": { "method": "GET", "url": "{{baseUrl}}/api/tailor/sessions?page=1&pageSize=20&search=" } },
+        {
+          "name": "Create session (multipart)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/tailor/sessions",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "resume", "type": "file" },
+                { "key": "jd", "type": "file", "disabled": true },
+                { "key": "jdText", "value": "Paste the JD text here…", "type": "text" },
+                { "key": "name", "value": "Stripe — Senior Engineer", "type": "text" },
+                { "key": "jdTitle", "value": "Senior Software Engineer", "type": "text" },
+                { "key": "jdCompany", "value": "Stripe", "type": "text" },
+                { "key": "outputFormat", "value": "DOCX", "type": "text" }
+              ]
+            }
+          }
+        },
+        { "name": "Get session", "request": { "method": "GET", "url": "{{baseUrl}}/api/tailor/sessions/{{sessionId}}" } },
+        {
+          "name": "Rename session",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/tailor/sessions/{{sessionId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated name\"\n}" }
+          }
+        },
+        { "name": "Delete session", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/tailor/sessions/{{sessionId}}" } },
+        {
+          "name": "Re-tailor (new version)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/tailor/sessions/{{sessionId}}/retailor",
+            "body": { "mode": "raw", "raw": "{\n  \"edits\": {},\n  \"notes\": \"Make summary punchier\"\n}" }
+          }
+        },
+        { "name": "List versions", "request": { "method": "GET", "url": "{{baseUrl}}/api/tailor/sessions/{{sessionId}}/versions" } }
+      ]
+    },
+    {
+      "name": "Versions",
+      "item": [
+        {
+          "name": "Update version (rescore)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/versions/{{versionId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"tailoredJson\": {}\n}" }
+          }
+        },
+        { "name": "Download DOCX", "request": { "method": "GET", "url": "{{baseUrl}}/api/versions/{{versionId}}/download?format=DOCX" } },
+        { "name": "Download PDF (inline)", "request": { "method": "GET", "url": "{{baseUrl}}/api/versions/{{versionId}}/download?format=PDF&inline=1" } }
+      ]
+    },
+    {
+      "name": "Email",
+      "item": [
+        {
+          "name": "Generate email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/email/generate",
+            "body": { "mode": "raw", "raw": "{\n  \"sessionId\": \"{{sessionId}}\",\n  \"versionId\": \"{{versionId}}\"\n}" }
+          }
+        },
+        { "name": "List emails for session", "request": { "method": "GET", "url": "{{baseUrl}}/api/email/session/{{sessionId}}" } },
+        {
+          "name": "Update email",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/email/{{emailId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"subject\": \"New subject\",\n  \"body\": \"New body…\",\n  \"toEmail\": \"recruiter@company.com\"\n}" }
+          }
+        },
+        {
+          "name": "Send email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/email/{{emailId}}/send",
+            "body": { "mode": "raw", "raw": "{\n  \"toEmail\": \"recruiter@company.com\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        { "name": "Analytics", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/analytics" } },
+        { "name": "List users", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/users?page=1&pageSize=20&search=" } },
+        {
+          "name": "Update user (role / active)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/admin/users/{{userId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"USER\",\n  \"isActive\": true\n}" }
+          }
+        },
+        { "name": "Reset user history", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/admin/users/{{userId}}/history" } },
+        { "name": "Revoke user API key", "request": { "method": "POST", "url": "{{baseUrl}}/api/admin/users/{{userId}}/api-key/revoke" } },
+        {
+          "name": "Reset ALL history",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/admin/reset-all-history",
+            "body": { "mode": "raw", "raw": "{\n  \"confirm\": \"CONFIRM DELETE ALL\"\n}" }
+          }
+        },
+        { "name": "Audit logs", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/audit-logs?page=1&pageSize=25" } },
+        { "name": "Get settings", "request": { "method": "GET", "url": "{{baseUrl}}/api/admin/settings" } },
+        {
+          "name": "Update settings",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/admin/settings",
+            "body": { "mode": "raw", "raw": "{\n  \"aiModel\": \"gpt-4o\",\n  \"maxFileSizeMb\": 5,\n  \"maxTailorPerHour\": 10,\n  \"maxApiCallsPerHour\": 100\n}" }
+          }
+        }
+      ]
+    }
+  ]
+}

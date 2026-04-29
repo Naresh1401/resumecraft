@@ -1,0 +1,32 @@
+# deps
+node_modules
+.pnpm-store
+.pnpm-debug.log*
+
+# next
+.next
+out
+build
+dist
+
+# env
+.env
+.env.local
+.env.*.local
+
+# misc
+.DS_Store
+*.log
+coverage
+.vercel
+
+# prisma
+apps/web/prisma/migrations/dev.db*
+
+# user uploads (contain private user data)
+apps/web/.uploads
+apps/web/uploads
+
+# build artifacts
+apps/web/tsconfig.tsbuildinfo
+
