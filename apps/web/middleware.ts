@@ -1,8 +1,40 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/lib/auth/authOptions";
 
+const SHOWCASE_MODE = process.env.NEXT_PUBLIC_SHOWCASE_MODE === "true";
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // Showcase mode: hide login/signup and any DB-backed pages — send everyone to landing
+  if (SHOWCASE_MODE) {
+    if (
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/register") ||
+      pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/tailor") ||
+      pathname.startsWith("/profile") ||
+      pathname.startsWith("/admin")
+    ) {
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+    // Block API routes that need DB so users don't see 500s
+    if (
+      pathname.startsWith("/api/auth/register") ||
+      pathname.startsWith("/api/tailor") ||
+      pathname.startsWith("/api/admin") ||
+      pathname.startsWith("/api/user") ||
+      pathname.startsWith("/api/email") ||
+      pathname.startsWith("/api/versions") ||
+      pathname.startsWith("/api/files")
+    ) {
+      return NextResponse.json(
+        { error: "This is a public showcase. Run the project locally to use the full app.", repo: "https://github.com/Naresh1401/resumecraft" },
+        { status: 503 }
+      );
+    }
+    return NextResponse.next();
+  }
 
   // CORS allowlist for cross-origin (programmatic) callers
   const origin = req.headers.get("origin");
@@ -33,5 +65,13 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/dashboard/:path*", "/tailor/:path*", "/profile/:path*", "/api/:path*"],
+  matcher: [
+    "/login",
+    "/register",
+    "/admin/:path*",
+    "/dashboard/:path*",
+    "/tailor/:path*",
+    "/profile/:path*",
+    "/api/:path*",
+  ],
 };

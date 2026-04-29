@@ -4,8 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Sparkles, FileCheck2, Mail, History, ShieldCheck, KeyRound,
-  UploadCloud, Brain, FileText, Download, Send, ArrowRight,
+  UploadCloud, Brain, FileText, Download, Send, ArrowRight, Github,
 } from "lucide-react";
+
+const SHOWCASE_MODE = process.env.NEXT_PUBLIC_SHOWCASE_MODE === "true";
+const REPO_URL = "https://github.com/Naresh1401/resumecraft";
 
 const STEPS = [
   { icon: UploadCloud, title: "Upload", body: "Drop your resume + the job description." },
@@ -51,10 +54,28 @@ export default function Page() {
               Upload a resume and a job description. We rewrite it to match the role, score it for ATS,
               and even draft your recruiter outreach email — in seconds.
             </p>
-            <div className="mt-8 flex justify-center gap-3">
-              <Button asChild size="lg"><Link href="/register">Get started — it's free <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
-              <Button asChild size="lg" variant="outline"><Link href="#how">How it works</Link></Button>
+            <div className="mt-8 flex justify-center gap-3 flex-wrap">
+              {SHOWCASE_MODE ? (
+                <>
+                  <Button asChild size="lg">
+                    <a href={REPO_URL} target="_blank" rel="noreferrer">
+                      <Github className="h-4 w-4 mr-1" /> View on GitHub <ArrowRight className="h-4 w-4 ml-1" />
+                    </a>
+                  </Button>
+                  <Button asChild size="lg" variant="outline"><Link href="#how">How it works</Link></Button>
+                </>
+              ) : (
+                <>
+                  <Button asChild size="lg"><Link href="/register">Get started — it's free <ArrowRight className="h-4 w-4 ml-1" /></Link></Button>
+                  <Button asChild size="lg" variant="outline"><Link href="#how">How it works</Link></Button>
+                </>
+              )}
             </div>
+            {SHOWCASE_MODE && (
+              <p className="mt-6 text-xs text-muted-foreground max-w-xl mx-auto">
+                This is a public showcase of the ResumeCraft project. Clone the repo and run <code className="px-1 py-0.5 rounded bg-muted">pnpm dev</code> to use the full app locally with your own database and Anthropic API key.
+              </p>
+            )}
           </div>
         </section>
 
@@ -105,13 +126,21 @@ export default function Page() {
         <section id="cta" className="container py-20">
           <Card className="max-w-2xl mx-auto border-primary">
             <CardContent className="p-8 text-center">
-              <div className="text-sm font-semibold uppercase tracking-wide text-primary">Free for everyone</div>
-              <h3 className="mt-2 text-2xl font-bold">No plans, no paywalls, no credit card.</h3>
+              <div className="text-sm font-semibold uppercase tracking-wide text-primary">{SHOWCASE_MODE ? "Open Source" : "Free for everyone"}</div>
+              <h3 className="mt-2 text-2xl font-bold">{SHOWCASE_MODE ? "Self-host the full app — it's MIT licensed." : "No plans, no paywalls, no credit card."}</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Every feature — unlimited tailoring, ATS scoring, version history, AI email composer, API access — is open to all signed-in users.
+                {SHOWCASE_MODE
+                  ? "Clone the repo, add your Anthropic API key + Postgres connection string, and you have your own private resume tailoring service."
+                  : "Every feature — unlimited tailoring, ATS scoring, version history, AI email composer, API access — is open to all signed-in users."}
               </p>
               <Button asChild size="lg" className="mt-6">
-                <Link href="/register">Create your account <ArrowRight className="h-4 w-4 ml-1" /></Link>
+                {SHOWCASE_MODE ? (
+                  <a href={REPO_URL} target="_blank" rel="noreferrer">
+                    <Github className="h-4 w-4 mr-1" /> View on GitHub <ArrowRight className="h-4 w-4 ml-1" />
+                  </a>
+                ) : (
+                  <Link href="/register">Create your account <ArrowRight className="h-4 w-4 ml-1" /></Link>
+                )}
               </Button>
             </CardContent>
           </Card>
