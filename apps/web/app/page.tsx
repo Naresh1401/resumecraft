@@ -204,7 +204,7 @@ export default function Page() {
           <Button type="submit" size="lg" disabled={loading} className="w-full">
             {loading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Tailoring (~30 sec)...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Tailoring (~10 sec)...
               </>
             ) : (
               <>

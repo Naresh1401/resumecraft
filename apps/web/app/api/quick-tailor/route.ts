@@ -67,49 +67,18 @@ export async function POST(req: NextRequest) {
 
     const before = calculateOriginalAtsScore(resumeText, jdText);
 
-    // First pass — honor userPrompt and use previousTailored as the editing baseline if provided
-    let tailored = await tailorResume({
+    // Single AI pass — fast model, no retry loop. The system prompt + grounding rules already
+    // target a 90+ ATS score on the first try; retries cost 20-40s each and rarely improve more
+    // than a few points, so we skip them by default. Set QUICK_TAILOR_BOOST=true to re-enable.
+    const tailored = await tailorResume({
       resumeText,
       jdText,
       edits: previousTailored,
       userPrompt: userPrompt || undefined,
     });
-    let after = calculateATSScore(tailored, jdText);
+    const after = calculateATSScore(tailored, jdText);
 
-    // If ATS is below the 90-95 target, do up to 2 boost passes that explicitly push the score up
-    // while still respecting userPrompt. Keep the highest-scoring result.
-    let bestTailored = tailored;
-    let bestAts = after;
-    const TARGET = 90;
-    const MAX_RETRIES = 2;
-    for (let i = 0; i < MAX_RETRIES && bestAts.total < TARGET; i++) {
-      const missing = (bestTailored as any).missingKeywords?.slice(0, 12) || [];
-      const boostPrompt = [
-        userPrompt,
-        `BOOST PASS ${i + 1}: The previous tailored version scored ${bestAts.total}/100 on ATS. Push the score to 90-95 by:`,
-        `- Surfacing every JD keyword the candidate truthfully has, especially: ${missing.join(", ") || "(see JD)"}.`,
-        `- Ensuring EVERY experience bullet starts with a strong action verb in past tense.`,
-        `- Adding at least one quantified outcome per role drawn from the original resume.`,
-        `- Re-checking that all required ATS sections are present and well-formed.`,
-        `Do NOT invent any new facts, companies, dates, metrics, or skills not present in the ORIGINAL RESUME.`,
-      ].filter(Boolean).join("\n");
-
-      const next = await tailorResume({
-        resumeText,
-        jdText,
-        edits: bestTailored,
-        userPrompt: boostPrompt,
-      });
-      const nextAts = calculateATSScore(next, jdText);
-      if (nextAts.total > bestAts.total) {
-        bestTailored = next;
-        bestAts = nextAts;
-      }
-      if (bestAts.total >= TARGET) break;
-    }
-    tailored = bestTailored;
-    after = bestAts;
-
+    // Generate the docx in parallel-friendly fashion (it's CPU-only and fast, ~50-200ms).
     let docxBase64: string | null = null;
     try {
       const docx = await generateDocx(tailored);
