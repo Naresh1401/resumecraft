@@ -30,3 +30,4 @@ apps/web/uploads
 # build artifacts
 apps/web/tsconfig.tsbuildinfo
 
+**/.DS_Store
