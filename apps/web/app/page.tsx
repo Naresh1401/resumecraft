@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Upload, Download, Loader2, Github, FileText } from "lucide-react";
+import { Sparkles, Upload, Download, Loader2, Github, FileText, Wand2 } from "lucide-react";
 
 const REPO_URL = "https://github.com/Naresh1401/resumecraft";
 
@@ -19,9 +19,22 @@ export default function Page() {
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeText, setResumeText] = useState("");
   const [jdText, setJdText] = useState("");
+  const [userPrompt, setUserPrompt] = useState("");
   const [loading, setLoading] = useState(false);
+  const [refining, setRefining] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Result | null>(null);
+  // Cache the resume text + JD that produced the current result so refine calls
+  // don't need a re-upload of the original file.
+  const [cached, setCached] = useState<{ resumeText: string; jdText: string } | null>(null);
+  const [refinePrompt, setRefinePrompt] = useState("");
+
+  async function callApi(fd: FormData) {
+    const res = await fetch("/api/quick-tailor", { method: "POST", body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Tailoring failed");
+    return data as Result;
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -43,15 +56,45 @@ export default function Page() {
       if (resumeFile) fd.append("resume", resumeFile);
       else fd.append("resumeText", resumeText);
       fd.append("jdText", jdText);
+      if (userPrompt.trim()) fd.append("userPrompt", userPrompt.trim());
 
-      const res = await fetch("/api/quick-tailor", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Tailoring failed");
+      const data = await callApi(fd);
       setResult(data);
+      // Cache the resolved resume text from the API response for refine calls.
+      // (We re-derive it from the file on the server, so reuse what we sent.)
+      setCached({
+        resumeText: resumeFile ? "" : resumeText,
+        jdText,
+      });
+      // If we used a file, we need to keep the file around for refines.
+      // resumeFile is already in state, so refines below will re-send it.
     } catch (err: any) {
       setError(err?.message || "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function onRefine() {
+    if (!result) return;
+    setError(null);
+    setRefining(true);
+    try {
+      const fd = new FormData();
+      if (resumeFile) fd.append("resume", resumeFile);
+      else if (cached?.resumeText) fd.append("resumeText", cached.resumeText);
+      else fd.append("resumeText", resumeText);
+      fd.append("jdText", cached?.jdText || jdText);
+      if (refinePrompt.trim()) fd.append("userPrompt", refinePrompt.trim());
+      fd.append("previousTailored", JSON.stringify(result.tailored));
+
+      const data = await callApi(fd);
+      setResult(data);
+      setRefinePrompt("");
+    } catch (err: any) {
+      setError(err?.message || "Refine failed");
+    } finally {
+      setRefining(false);
     }
   }
 
@@ -131,6 +174,23 @@ export default function Page() {
                 rows={8}
                 value={jdText}
                 onChange={(e) => setJdText(e.target.value)}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-6 space-y-2">
+              <label className="block text-sm font-medium">
+                3. Custom instructions <span className="text-muted-foreground font-normal">(optional)</span>
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Leave blank for an automatic tailoring that targets a 90–95 ATS score using only the roles and facts from your original resume.
+              </p>
+              <Textarea
+                placeholder='e.g. "Emphasize my AWS work", "Lead with the StartupXYZ role", "Tone down the leadership language"...'
+                rows={3}
+                value={userPrompt}
+                onChange={(e) => setUserPrompt(e.target.value)}
               />
             </CardContent>
           </Card>
@@ -218,6 +278,35 @@ export default function Page() {
                 </CardContent>
               </Card>
             )}
+
+            <Card className="border-dashed">
+              <CardContent className="p-6 space-y-3">
+                <div className="flex items-center gap-2 font-semibold">
+                  <Wand2 className="h-4 w-4" /> Refine this resume
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Tell the AI what to change — it will re-tailor while keeping all the original roles, dates and facts intact.
+                </p>
+                <Textarea
+                  placeholder='e.g. "Make the summary shorter", "Add more focus on Kubernetes", "Remove the mentoring bullet"...'
+                  rows={3}
+                  value={refinePrompt}
+                  onChange={(e) => setRefinePrompt(e.target.value)}
+                  disabled={refining}
+                />
+                <Button onClick={onRefine} disabled={refining || !refinePrompt.trim()} className="w-full sm:w-auto">
+                  {refining ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Refining...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="h-4 w-4 mr-2" /> Apply changes
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         )}
       </section>
